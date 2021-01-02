@@ -150,7 +150,7 @@ namespace ConcurConnector_Expenses
                     string sConfigInfo = configInfoCmd.ExecuteScalar().ToString();
                     ConfigInfo configInfo = JsonConvert.DeserializeObject<ConfigInfo>(sConfigInfo);
 
-                    //Get highest submitted date from staging and subract 14 days
+                    //Get highest submitted date from staging and subtract 14 days
                     #region Get Last Submitted Date
                     using (MySql.Data.MySqlClient.MySqlConnection conn1 = new MySql.Data.MySqlClient.MySqlConnection())
                     {
@@ -158,7 +158,7 @@ namespace ConcurConnector_Expenses
                         conn1.ConnectionString = myConnectionString;
                         Console.WriteLine("Opening Connection");
                         conn1.Open();
-                        string dateSQL = $"Select coalesce(date_add(Max(SubmittedDate), INTERVAL -14 DAY),'{firstSubmitDate}') CutOff   From Concur_ExpenseReports";
+                        string dateSQL = $"Select coalesce(date_add(Max(SubmittedDate), INTERVAL -30 DAY),'{firstSubmitDate}') CutOff   From Concur_ExpenseReports";
                         using (var cmd = conn1.CreateCommand())
                         {
 
@@ -186,17 +186,20 @@ namespace ConcurConnector_Expenses
                         HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
                         var nvc = new List<KeyValuePair<string, string>>();
                         string clientSecret = Decrypt(configInfo.client_secret);
-                        string grantType = "password";
+                        //string grantType = "password";
+                        string grantType = "refresh_token";
                         string userName = configInfo.user_name;
                         string password = Decrypt(configInfo.password);
                         string credType = "password";
                         string clientID = configInfo.client_id;
+                        string refresh_token = "9ccd78e3-32c7-4efb-9d9c-f7cf365b76e5";
                         nvc.Add(new KeyValuePair<string, string>("client_secret", clientSecret));
                         nvc.Add(new KeyValuePair<string, string>("grant_type", grantType));
-                        nvc.Add(new KeyValuePair<string, string>("username", userName));
-                        nvc.Add(new KeyValuePair<string, string>("password", password));
+                        //nvc.Add(new KeyValuePair<string, string>("username", userName));
+                        //nvc.Add(new KeyValuePair<string, string>("password", password));
                         nvc.Add(new KeyValuePair<string, string>("credtype", credType));
                         nvc.Add(new KeyValuePair<string, string>("client_id", clientID));
+                        nvc.Add(new KeyValuePair<string, string>("refresh_token", refresh_token));
                         request.Content = new FormUrlEncodedContent(nvc);
                         request.RequestUri = new Uri(requestUrl);
                         Task<HttpResponseMessage> content = client.PostAsync(request.RequestUri, request.Content);
@@ -248,6 +251,7 @@ namespace ConcurConnector_Expenses
 
                                 var myTrans = conn.BeginTransaction();
                                 var cmdSQL = conn.CreateCommand();
+                                cmdSQL.CommandTimeout = 600;
                                 cmdSQL.CommandType = CommandType.StoredProcedure;
                                 cmdSQL.CommandText = "Concur_Expenses_Insert";
                                 cmdSQL.Parameters.AddWithValue("_ReportID", reportID.ToString());
